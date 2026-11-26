@@ -1,34 +1,67 @@
-import React, { useContext } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { CartProvider, CartContext } from './CartContext';
-import ShopScreen from './ShopScreen';
-import CartScreen from './CartScreen';
-
-const Tab = createBottomTabNavigator();
-
-function Tabs() {
-  const { items } = useContext(CartContext);
-  const count = items.reduce((sum, i) => sum + i.qty, 0);
-
-  return (
-    <Tab.Navigator>
-      <Tab.Screen name="Shop" component={ShopScreen} />
-      <Tab.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{ tabBarBadge: count > 0 ? count : undefined }}
-      />
-    </Tab.Navigator>
-  );
-}
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { loadNotes, saveNotes } from './StorageService';
+import NoteItem from './NoteItem';
+import styles from './styles';
 
 export default function App() {
+  const [notes, setNotes] = useState([]);
+  const [text, setText] = useState('');
+  const [editId, setEditId] = useState(null);
+
+  useEffect(() => {
+    loadNotes().then(setNotes);
+  }, []);
+
+  const sync = (next) => {
+    setNotes(next);
+    saveNotes(next);
+  };
+
+  const save = () => {
+    const clean = text.trim();
+    if (!clean) return;
+    if (editId) {
+      sync(notes.map((n) => (n.id === editId ? { ...n, text: clean } : n)));
+      setEditId(null);
+    } else {
+      sync([{ id: Date.now().toString(), text: clean }, ...notes]);
+    }
+    setText('');
+  };
+
+  const remove = (id) => {
+    sync(notes.filter((n) => n.id !== id));
+    if (editId === id) {
+      setEditId(null);
+      setText('');
+    }
+  };
+
   return (
-    <CartProvider>
-      <NavigationContainer>
-        <Tabs />
-      </NavigationContainer>
-    </CartProvider>
+    <View style={styles.wrap}>
+      <Text style={styles.title}>Notes</Text>
+      <View style={styles.rowInput}>
+        <TextInput style={styles.input} placeholder="New note..." value={text} onChangeText={setText} />
+        <TouchableOpacity style={styles.btn} onPress={save}>
+          <Text style={styles.btnTxt}>{editId ? 'Update' : 'Add'}</Text>
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        data={notes}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <NoteItem
+            note={item}
+            onEdit={(n) => {
+              setText(n.text);
+              setEditId(n.id);
+            }}
+            onDelete={remove}
+          />
+        )}
+        ListEmptyComponent={<Text style={styles.empty}>No notes yet.</Text>}
+      />
+    </View>
   );
 }
