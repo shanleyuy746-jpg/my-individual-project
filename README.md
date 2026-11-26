@@ -11,3 +11,6 @@ Activity_7
 -NoteItem.js
 -StorageService.js
 forgot to upload it her because i already delete the files in my Laptop:>
+just to make sure i already uploaded it to.
+more code activity to upload.
+:>
